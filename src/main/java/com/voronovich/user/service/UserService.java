@@ -14,7 +14,7 @@ public interface UserService {
 
     User getById(String id);
 
-    User getByEmail(String email);
+    User findByUsername(String username);
 
     Page<User> getByPage(Pageable pageable);
 

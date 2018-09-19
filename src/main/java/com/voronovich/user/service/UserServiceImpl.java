@@ -5,12 +5,25 @@ import com.voronovich.user.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
-@Service("userDetailsService")
-public class UserServiceImpl implements UserService {
+import java.util.HashSet;
+import java.util.Set;
+
+@Service(value = "userService")
+public class UserServiceImpl implements UserService, UserDetailsService {
 
     private final UserRepository userRepository;
+
+    @Autowired
+    private BCryptPasswordEncoder bcryptEncoder;
+
 
     @Autowired
     public UserServiceImpl(UserRepository userRepository) {
@@ -43,15 +56,36 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public User getByEmail(String email) {
-        return userRepository.findByEmail(email);
+    public User findByUsername(String email) {
+        return userRepository.findByUsername(email);
     }
 
     private User mapper(User user) {
         User mappedUser = new User();
-        mappedUser.setName(user.getName());
-        mappedUser.setSurname(user.getSurname());
-        mappedUser.setPatronymic(user.getPatronymic());
+        mappedUser.setUsername(user.getUsername());
+        mappedUser.setPassword(user.getPassword());
         return mappedUser;
+    }
+
+    private Set<SimpleGrantedAuthority> getAuthority(User user) {
+        Set<SimpleGrantedAuthority> authorities = new HashSet<>();
+        user.getRoles().forEach(role -> {
+            authorities.add(new SimpleGrantedAuthority("ROLE_" + role.getName()));
+        });
+        return authorities;
+    }
+
+    @Override
+    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+        User user = userRepository.findByUsername(username);
+        if(user == null){
+            throw new UsernameNotFoundException("Invalid username or password.");
+        }
+        return new org.springframework.security.core.userdetails.User(user.getUsername(), user.getPassword(), getAuthority(user));
+    }
+
+    public static void main(String[] args) {
+        BCryptPasswordEncoder bcryptEncoder = new BCryptPasswordEncoder();
+        System.out.println(bcryptEncoder.encode("$2a$04$Ye7/lJoJin6.m9sOJZ9ujeTgHEVM4VXgI2Ingpsnf9gXyXEXf/IlW"));
     }
 }
